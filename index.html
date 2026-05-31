@@ -378,28 +378,76 @@
             direction: ltr;
         }
 
-        /* Cookie notice styling */
-        .cookie-notice {
-            background: rgba(255, 100, 0, 0.15);
-            border: 1px solid #ff6400;
+        /* Cookie settings panel styling */
+        .cookie-panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--cyber-cyan);
             border-radius: 8px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
-            text-align: center;
+            padding: 1rem;
+            margin-top: 1rem;
             display: none;
         }
 
-        .cookie-notice a {
-            color: var(--cyber-cyan);
+        .cookie-panel.show {
+            display: block;
         }
 
-        .cookie-notice .close-notice {
-            float: left;
-            cursor: pointer;
-            color: #ff6400;
-            margin-right: 0.5rem;
-            font-weight: bold;
+        .cookie-label {
+            font-size: 0.8rem;
+            color: var(--cyber-cyan);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .cookie-input-small {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--cyber-cyan);
+            color: #fff;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.7rem;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .cookie-status {
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+            color: #888;
+        }
+
+        .cookie-status.success {
+            color: #05ffa1;
+        }
+
+        .cookie-status.error {
+            color: #ff2a6d;
+        }
+
+        .btn-small {
+            padding: 6px 12px !important;
+            font-size: 0.75rem !important;
+            min-width: auto !important;
+            margin-top: 0.5rem;
+        }
+
+        .instructions {
+            background: rgba(0, 240, 255, 0.1);
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-top: 0.75rem;
+            font-size: 0.7rem;
+            line-height: 1.5;
+        }
+
+        .instructions code {
+            background: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.65rem;
         }
     </style>    
 </head>
@@ -418,12 +466,6 @@
                 </p>
                 
                 <div class="input-wrapper">
-                    <!-- Cookie notice for Cloudflare bypass -->
-                    <div id="cookieNotice" class="cookie-notice">
-                        <span class="close-notice" onclick="document.getElementById('cookieNotice').style.display='none';">&times;</span>
-                        ⚠️ برای بهترین عملکرد، لطفاً ابتدا <a href="https://telegramdownloader.net" target="_blank">telegramdownloader.net</a> را باز کنید و سپس به این صفحه برگردید.
-                    </div>
-
                     <div class="cyber-input-group">
                         <span class="cyber-input-group__addon">
                             🔗
@@ -439,6 +481,28 @@
                         <button id="getDirectLink" class="cyber-btn cyber-btn--magenta">
                             📥 دریافت لینک مستقیم
                         </button>
+                        <button id="showCookiePanelBtn" class="cyber-btn" style="background: #444;">
+                            🍪 تنظیمات کوکی
+                        </button>
+                    </div>
+                    
+                    <!-- Cookie Settings Panel -->
+                    <div id="cookiePanel" class="cookie-panel">
+                        <label class="cookie-label">🍪 تنظیمات کوکی Cloudflare (cf_clearance)</label>
+                        <input type="text" id="cfCookieInput" class="cookie-input-small" placeholder="مقدار cf_clearance را اینجا وارد کنید" dir="ltr">
+                        <div class="button-group" style="margin-top: 0.5rem; gap: 0.5rem;">
+                            <button id="saveCookieBtn" class="btn-small cyber-btn" style="background: var(--cyber-green); color: #000;">💾 ذخیره کوکی</button>
+                            <button id="clearCookieBtn" class="btn-small cyber-btn" style="background: #ff2a6d;">🗑️ پاک کردن کوکی</button>
+                        </div>
+                        <div id="cookieStatus" class="cookie-status"></div>
+                        <div class="instructions">
+                            <strong>🔧 نحوه دریافت کوکی cf_clearance:</strong><br>
+                            1. در مرورگر خود به آدرس <a href="https://telegramdownloader.net" target="_blank" style="color: var(--cyber-cyan);">telegramdownloader.net</a> بروید<br>
+                            2. کلید F12 را بزنید و به تب Application (یا Storage) بروید<br>
+                            3. در بخش Cookies، روی آدرس سایت کلیک کنید<br>
+                            4. مقدار ستون "Value" برای ردیف "cf_clearance" را کپی کنید<br>
+                            5. مقدار کپی شده را در کادر بالا قرار داده و "ذخیره کوکی" را بزنید
+                        </div>
                     </div>
                     
                     <div id="resultBox" class="result-box">
@@ -535,30 +599,38 @@
     </div>
 
     <script>
-        // Get cookies from the browser
-        function getCookies() {
-            return document.cookie;
+        // Cookie management functions
+        function getStoredCookie() {
+            return localStorage.getItem('cf_clearance_cookie') || '';
         }
 
-        // Check if user has visited telegramdownloader.net (has cf_clearance cookie)
-        function hasCloudflareCookie() {
-            return document.cookie.includes('cf_clearance');
-        }
-
-        // Show cookie notice if needed
-        function checkAndShowCookieNotice() {
-            if (!hasCloudflareCookie()) {
-                const notice = document.getElementById('cookieNotice');
-                if (notice) {
-                    notice.style.display = 'block';
-                    // Auto-hide after 10 seconds
-                    setTimeout(() => {
-                        if (notice.style.display === 'block') {
-                            notice.style.display = 'none';
-                        }
-                    }, 10000);
-                }
+        function saveCookie(cookieValue) {
+            // Clean the cookie value (remove any extra spaces or prefixes)
+            let cleanCookie = cookieValue.trim();
+            // Remove "cf_clearance=" prefix if user included it by mistake
+            if (cleanCookie.startsWith('cf_clearance=')) {
+                cleanCookie = cleanCookie.replace('cf_clearance=', '');
             }
+            // Remove any semicolons or invalid characters
+            cleanCookie = cleanCookie.split(';')[0].trim();
+            
+            if (cleanCookie) {
+                localStorage.setItem('cf_clearance_cookie', cleanCookie);
+                return true;
+            }
+            return false;
+        }
+
+        function clearCookie() {
+            localStorage.removeItem('cf_clearance_cookie');
+        }
+
+        function getFullCookieString() {
+            const stored = getStoredCookie();
+            if (stored) {
+                return `cf_clearance=${stored}`;
+            }
+            return '';
         }
 
         // Get the base URL for API calls
@@ -575,7 +647,7 @@
         // Main function to process Telegram link using your own proxy with cookies
         async function processTelegramLink(telegramLink, statusElement) {
             const apiUrl = getApiUrl();
-            const cookies = getCookies();
+            const cookies = getFullCookieString();
             
             if (statusElement) {
                 statusElement.textContent = '🔄 در حال ارتباط با سرور...';
@@ -591,7 +663,7 @@
                     },
                     body: JSON.stringify({ 
                         telegram_link: telegramLink,
-                        cookies: cookies  // Send browser cookies to the proxy
+                        cookies: cookies
                     })
                 });
                 
@@ -640,9 +712,8 @@
                 
                 // Check for error in response
                 if (data && data.error) {
-                    // If error mentions Cloudflare, show helpful message
-                    if (data.error.includes('Cloudflare') || data.error.includes('cf_clearance')) {
-                        throw new Error('نیاز به تایید امنیتی. لطفاً telegramdownloader.net را باز کنید و سپس دوباره تلاش کنید.');
+                    if (data.requires_clearance || data.error.includes('Cloudflare')) {
+                        throw new Error('CLOUDFLARE_NEEDED');
                     }
                     throw new Error(data.error);
                 }
@@ -662,8 +733,51 @@
         const resultContent = document.getElementById('resultContent');
         const copyButton = document.getElementById('copyButton');
         const statusInfo = document.getElementById('statusInfo');
+        const cookiePanel = document.getElementById('cookiePanel');
+        const showCookiePanelBtn = document.getElementById('showCookiePanelBtn');
+        const saveCookieBtn = document.getElementById('saveCookieBtn');
+        const clearCookieBtn = document.getElementById('clearCookieBtn');
+        const cfCookieInput = document.getElementById('cfCookieInput');
+        const cookieStatus = document.getElementById('cookieStatus');
         
         let currentDownloadLink = '';
+        
+        // Cookie panel handlers
+        showCookiePanelBtn.addEventListener('click', function() {
+            cookiePanel.classList.toggle('show');
+            // Load existing cookie into input
+            const existing = getStoredCookie();
+            if (existing) {
+                cfCookieInput.value = existing;
+                cookieStatus.textContent = '✅ کوکی ذخیره شده در سیستم وجود دارد';
+                cookieStatus.className = 'cookie-status success';
+            } else {
+                cookieStatus.textContent = '⚠️ هیچ کوکی ذخیره شده‌ای یافت نشد';
+                cookieStatus.className = 'cookie-status error';
+            }
+        });
+        
+        saveCookieBtn.addEventListener('click', function() {
+            const cookieValue = cfCookieInput.value.trim();
+            if (saveCookie(cookieValue)) {
+                cookieStatus.textContent = '✅ کوکی با موفقیت ذخیره شد!';
+                cookieStatus.className = 'cookie-status success';
+                cfCookieInput.value = '';
+                setTimeout(() => {
+                    cookiePanel.classList.remove('show');
+                }, 1500);
+            } else {
+                cookieStatus.textContent = '❌ لطفاً مقدار معتبر وارد کنید';
+                cookieStatus.className = 'cookie-status error';
+            }
+        });
+        
+        clearCookieBtn.addEventListener('click', function() {
+            clearCookie();
+            cfCookieInput.value = '';
+            cookieStatus.textContent = '🗑️ کوکی پاک شد';
+            cookieStatus.className = 'cookie-status';
+        });
         
         // Copy button functionality
         copyButton.addEventListener('click', function() {
@@ -751,11 +865,21 @@
                     errorMessage += 'مشکل در ارتباط با سرور. لطفاً صفحه را refresh کنید و دوباره تلاش کنید.';
                 } else if (error.message.includes('404')) {
                     errorMessage += 'سرور پروکسی یافت نشد. اطمینان حاصل کنید که پروکسی به درستی تنظیم شده است.';
-                } else if (error.message.includes('نیاز به تایید امنیتی')) {
-                    errorMessage += 'نیاز به تایید امنیتی. لطفاً telegramdownloader.net را باز کنید، تایید امنیتی را انجام دهید، سپس به این صفحه برگردید و دوباره تلاش کنید.';
-                    // Show cookie notice
-                    const notice = document.getElementById('cookieNotice');
-                    if (notice) notice.style.display = 'block';
+                } else if (error.message === 'CLOUDFLARE_NEEDED') {
+                    errorMessage = '❌ خطا: نیاز به تنظیم کوکی Cloudflare<br><br>' +
+                        'لطفاً روی دکمه <strong>🍪 تنظیمات کوکی</strong> کلیک کنید و مراحل زیر را انجام دهید:<br>' +
+                        '1. به آدرس <a href="https://telegramdownloader.net" target="_blank" style="color: var(--cyber-cyan);">telegramdownloader.net</a> بروید<br>' +
+                        '2. کلید F12 را بزنید و به تب Application بروید<br>' +
+                        '3. در بخش Cookies، مقدار cf_clearance را کپی کنید<br>' +
+                        '4. به همین صفحه برگردید و مقدار را در تنظیمات کوکی وارد کنید';
+                    resultContent.innerHTML = `<div class="result-error">${errorMessage}</div>`;
+                    copyButton.style.display = 'none';
+                    resultBox.style.display = 'flex';
+                    statusInfo.textContent = '🍪 نیاز به تنظیم کوکی';
+                    statusInfo.style.color = '#ffaa44';
+                    // Automatically show cookie panel
+                    cookiePanel.classList.add('show');
+                    return;
                 } else if (error.message.includes('Invalid JSON')) {
                     errorMessage += 'پاسخ نامعتبر از سرور. لطفاً بعداً دوباره تلاش کنید.';
                 } else {
@@ -784,11 +908,6 @@
             if (e.key === 'Enter') {
                 getDirectLinkBtn.click();
             }
-        });
-        
-        // Check for Cloudflare cookie on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAndShowCookieNotice();
         });
     </script>
 </body>
