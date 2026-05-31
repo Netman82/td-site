@@ -505,13 +505,26 @@
     </div>
 
     <script>
+        // Get the base URL for API calls (works on both localhost and Vercel)
+        const getApiUrl = () => {
+            // If we're on Vercel preview or production, use relative path
+            if (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost') {
+                return '/api/proxy';
+            }
+            // Fallback to relative path
+            return '/api/proxy';
+        };
+        
         // Helper function to replace spaces with hyphens in download links
         function repairDownloadLink(url) {
+            if (!url) return url;
             return url.replace(/ /g, '-');
         }
         
         // Main function to process Telegram link using your own proxy
         async function processTelegramLink(telegramLink, statusElement) {
+            const apiUrl = getApiUrl();
+            
             if (statusElement) {
                 statusElement.textContent = '🔄 در حال ارتباط با سرور...';
                 statusElement.style.color = '#ffaa44';
@@ -519,7 +532,7 @@
             
             try {
                 // Call your own proxy endpoint
-                const response = await fetch('/api/proxy', {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -528,7 +541,8 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 
                 const data = await response.json();
@@ -538,8 +552,9 @@
                     statusElement.style.color = '#05ffa1';
                 }
                 
-                // Handle different response formats from the proxy
-                if (data.success && data.data) {
+                // Handle response format from telegramdownloader.net
+                // The API returns: { success: true, data: { status: "success", link: "...", file_name: "..." } }
+                if (data && data.success === true && data.data) {
                     if (data.data.status === "success" && data.data.link) {
                         let downloadLink = repairDownloadLink(data.data.link);
                         return {
@@ -554,15 +569,23 @@
                             downloadLink: downloadLink,
                             fileName: data.data.file_name || 'Unknown'
                         };
+                    } else if (data.data.error) {
+                        throw new Error(data.data.error);
                     }
-                } else if (data.link) {
+                }
+                
+                // Alternative response format
+                if (data && data.link) {
                     let downloadLink = repairDownloadLink(data.link);
                     return {
                         success: true,
                         downloadLink: downloadLink,
                         fileName: data.file_name || 'Unknown'
                     };
-                } else if (data.error) {
+                }
+                
+                // Check for error in response
+                if (data && data.error) {
                     throw new Error(data.error);
                 }
                 
@@ -637,7 +660,7 @@
             try {
                 const result = await processTelegramLink(telegramLink, statusInfo);
                 
-                if (result.success) {
+                if (result.success && result.downloadLink) {
                     currentDownloadLink = result.downloadLink;
                     
                     resultBox.className = 'result-box success';
@@ -670,6 +693,8 @@
                     errorMessage += 'مشکل در ارتباط با سرور. لطفاً صفحه را refresh کنید و دوباره تلاش کنید.';
                 } else if (error.message.includes('404')) {
                     errorMessage += 'سرور پروکسی یافت نشد. اطمینان حاصل کنید که پروکسی به درستی تنظیم شده است.';
+                } else if (error.message.includes('Invalid JSON')) {
+                    errorMessage += 'پاسخ نامعتبر از سرور. لطفاً بعداً دوباره تلاش کنید.';
                 } else {
                     errorMessage += error.message;
                 }
