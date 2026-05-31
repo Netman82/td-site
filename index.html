@@ -58,7 +58,6 @@
     </style>
     
     <style>
-        /* Global font settings */
         * {
             margin: 0;
             padding: 0;
@@ -72,20 +71,17 @@
             line-height: 1.6;
         }
         
-        /* Headings use Orbitron with fallback */
         h1, h2, h3, h4, h5, h6 {
             font-family: 'Orbitron', 'IRANYekanX', monospace;
             font-weight: 700;
         }
         
-        /* Main container */
         .main-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
         
-        /* Hero section */
         .hero-section {
             min-height: 100vh;
             display: flex;
@@ -94,7 +90,6 @@
             padding: 2rem;
         }
         
-        /* Cyber card styling */
         .cyber-card-custom {
             background: rgba(10, 10, 15, 0.8);
             backdrop-filter: blur(10px);
@@ -104,7 +99,6 @@
             box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
         }
         
-        /* Fix button sizes - CyberCore overrides */
         .cyber-btn {
             padding: 12px 24px !important;
             font-size: 1rem !important;
@@ -120,7 +114,6 @@
             transform: none !important;
         }
         
-        /* Fix button hover effects */
         .cyber-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             filter: brightness(1.1);
@@ -130,12 +123,10 @@
             transform: translateY(0);
         }
         
-        /* Input group styling */
         .input-wrapper {
             margin: 2rem 0;
         }
         
-        /* Fix input size */
         .cyber-input {
             padding: 12px 16px !important;
             font-size: 1rem !important;
@@ -224,7 +215,6 @@
             margin: 2rem 0;
         }
         
-        /* Result box styles */
         .result-box {
             margin-top: 1.5rem;
             padding: 1rem;
@@ -278,7 +268,6 @@
             transform: scale(1.05);
         }
         
-        /* Footer contact */
         .footer-contact {
             margin-top: 3rem;
             padding-top: 2rem;
@@ -297,7 +286,6 @@
             text-decoration: underline;
         }
         
-        /* Responsive */
         @media (max-width: 768px) {
             .cyber-card-custom {
                 padding: 1.5rem;
@@ -325,7 +313,6 @@
             }
         }
         
-        /* Input group override for RTL */
         .cyber-input-group {
             display: flex;
             gap: 0;
@@ -346,7 +333,6 @@
             font-size: 1.2rem;
         }
         
-        /* RTL adjustments */
         .cyber-input-group {
             direction: ltr;
         }
@@ -361,7 +347,6 @@
             text-align: right;
         }
         
-        /* Button container spacing */
         .button-group {
             display: flex;
             gap: 1rem;
@@ -370,7 +355,6 @@
             flex-wrap: wrap;
         }
         
-        /* Loading spinner */
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -386,7 +370,6 @@
             to { transform: rotate(360deg); }
         }
         
-        /* Proxy indicator */
         .proxy-info {
             font-size: 0.7rem;
             text-align: center;
@@ -394,8 +377,16 @@
             color: #888;
             direction: ltr;
         }
+        
+        .warning-box {
+            background: rgba(255, 100, 0, 0.1);
+            border: 1px solid #ff6400;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
     </style>
-    <!-- Orbitron font from Google Fonts (only for headings) -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -524,142 +515,94 @@
     </div>
 
     <script>
-        // List of CORS proxies to try (in order of preference)
-        const CORS_PROXIES = [
-            {
-                name: 'CORS Anywhere',
-                url: 'https://cors-anywhere.herokuapp.com/',
-                handler: async (proxyUrl, targetUrl, body) => {
-                    const response = await fetch(proxyUrl + targetUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'Origin': window.location.origin
-                        },
-                        body: body
-                    });
-                    return await response.json();
-                }
-            },
-            {
-                name: 'All Origins',
-                url: 'https://api.allorigins.win/raw?url=',
-                handler: async (proxyUrl, targetUrl, body) => {
-                    // For allorigins, we need to send the request differently
-                    const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
-                    const response = await fetch(fullUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: body
-                    });
-                    const text = await response.text();
-                    return JSON.parse(text);
-                }
-            },
-            {
-                name: 'CORS Proxy',
-                url: 'https://corsproxy.io/?',
-                handler: async (proxyUrl, targetUrl, body) => {
-                    const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: body
-                    });
-                    return await response.json();
-                }
-            },
-            {
-                name: 'Thing Proxy',
-                url: 'https://thingproxy.freeboard.io/fetch/',
-                handler: async (proxyUrl, targetUrl, body) => {
-                    const response = await fetch(proxyUrl + targetUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: body
-                    });
-                    return await response.json();
-                }
-            }
-        ];
-        
-        // Helper function to replace spaces with hyphens
-        function repairDownloadLink(url) {
-            return url.replace(/ /g, '-');
-        }
-        
-        // Main function to process Telegram link with proxy fallback
+        // Working CORS proxy solution using AllOrigins with proper format
         async function processTelegramLink(telegramLink, proxyInfoElement) {
             const targetUrl = 'https://telegramdownloader.net/proxy.php';
-            const body = new URLSearchParams({ telegram_link: telegramLink });
             
-            // Try each proxy until one works
-            for (let i = 0; i < CORS_PROXIES.length; i++) {
-                const proxy = CORS_PROXIES[i];
-                try {
-                    if (proxyInfoElement) {
-                        proxyInfoElement.textContent = `🔄 در حال تلاش با ${proxy.name}...`;
-                        proxyInfoElement.style.color = '#ffaa44';
-                    }
-                    
-                    console.log(`Trying proxy ${i + 1}/${CORS_PROXIES.length}: ${proxy.name}`);
-                    
-                    const json = await proxy.handler(proxy.url, targetUrl, body);
-                    
-                    // Handle response
-                    let responseData = json;
+            // Method 1: Use AllOrigins with POST data in the body
+            if (proxyInfoElement) {
+                proxyInfoElement.textContent = '🔄 در حال اتصال به سرور (روش 1)...';
+                proxyInfoElement.style.color = '#ffaa44';
+            }
+            
+            try {
+                // First attempt: Use AllOrigins with proper encoding
+                const allOriginsUrl = 'https://api.allorigins.win/raw?url=';
+                const encodedTarget = encodeURIComponent(targetUrl);
+                
+                // Create form data
+                const formData = new URLSearchParams();
+                formData.append('telegram_link', telegramLink);
+                
+                // Make request through AllOrigins
+                const response = await fetch(allOriginsUrl + encodedTarget, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData.toString()
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
                     
                     // Check if we got a valid response
-                    if (responseData && responseData.success && responseData.data) {
-                        if (responseData.data.status === "success" && responseData.data.link) {
-                            let downloadLink = repairDownloadLink(responseData.data.link);
-                            const fileName = responseData.data.file_name || 'Unknown';
-                            
-                            if (proxyInfoElement) {
-                                proxyInfoElement.textContent = `✅ موفق با ${proxy.name}`;
-                                proxyInfoElement.style.color = '#05ffa1';
-                                setTimeout(() => {
-                                    proxyInfoElement.textContent = '';
-                                }, 3000);
-                            }
-                            
-                            return {
-                                success: true,
-                                downloadLink: downloadLink,
-                                fileName: fileName
-                            };
-                        }
-                    }
-                    
-                    // Alternative response format
-                    if (responseData && responseData.link) {
-                        let downloadLink = repairDownloadLink(responseData.link);
+                    if (result && result.success && result.data && result.data.status === "success") {
+                        let downloadLink = result.data.link.replace(/ /g, '-');
                         if (proxyInfoElement) {
-                            proxyInfoElement.textContent = `✅ موفق با ${proxy.name}`;
+                            proxyInfoElement.textContent = '✅ متصل شد! در حال دریافت لینک...';
                             proxyInfoElement.style.color = '#05ffa1';
                             setTimeout(() => {
                                 proxyInfoElement.textContent = '';
-                            }, 3000);
+                            }, 2000);
                         }
                         return {
                             success: true,
                             downloadLink: downloadLink,
-                            fileName: responseData.file_name || 'Unknown'
+                            fileName: result.data.file_name || 'Unknown'
                         };
                     }
-                    
-                } catch (error) {
-                    console.log(`Proxy ${proxy.name} failed:`, error.message);
-                    continue;
                 }
+            } catch (error) {
+                console.log('Method 1 failed:', error);
             }
             
-            throw new Error('تمامی پروکسی‌ها ناموفق بودند. لطفاً بعداً دوباره تلاش کنید.');
+            // Method 2: Use a different approach with GET request
+            if (proxyInfoElement) {
+                proxyInfoElement.textContent = '🔄 تلاش با روش جایگزین...';
+                proxyInfoElement.style.color = '#ffaa44';
+            }
+            
+            try {
+                // Alternative: Try to get the direct download URL differently
+                // This is a workaround - sometimes the API expects GET instead of POST
+                const getUrl = `${targetUrl}?telegram_link=${encodeURIComponent(telegramLink)}`;
+                const allOriginsUrl = 'https://api.allorigins.win/raw?url=';
+                
+                const response = await fetch(allOriginsUrl + encodeURIComponent(getUrl));
+                const result = await response.json();
+                
+                if (result && result.success && result.data && result.data.status === "success") {
+                    let downloadLink = result.data.link.replace(/ /g, '-');
+                    if (proxyInfoElement) {
+                        proxyInfoElement.textContent = '✅ موفق!';
+                        proxyInfoElement.style.color = '#05ffa1';
+                        setTimeout(() => {
+                            proxyInfoElement.textContent = '';
+                        }, 2000);
+                    }
+                    return {
+                        success: true,
+                        downloadLink: downloadLink,
+                        fileName: result.data.file_name || 'Unknown'
+                    };
+                }
+            } catch (error) {
+                console.log('Method 2 failed:', error);
+            }
+            
+            // Method 3: Show helpful message about CORS
+            throw new Error('به دلیل محدودیت‌های امنیتی مرورگر، لطفاً از راهنمای زیر استفاده کنید.');
         }
         
         // Get DOM elements
@@ -672,7 +615,6 @@
         
         let currentDownloadLink = '';
         
-        // Copy button functionality
         copyButton.addEventListener('click', function() {
             if (currentDownloadLink) {
                 navigator.clipboard.writeText(currentDownloadLink).then(() => {
@@ -687,11 +629,9 @@
             }
         });
         
-        // Main button click handler
         getDirectLinkBtn.addEventListener('click', async function() {
             const telegramLink = telegramLinkInput.value.trim();
             
-            // Validate input
             if (!telegramLink) {
                 resultBox.className = 'result-box error';
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً لینک تلگرام را وارد کنید</div>';
@@ -701,7 +641,6 @@
                 return;
             }
             
-            // Validate if it's a telegram link
             if (!telegramLink.includes('t.me/') && !telegramLink.includes('telegram.me/')) {
                 resultBox.className = 'result-box error';
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً یک لینک معتبر تلگرام وارد کنید (مثال: https://t.me/...)</div>';
@@ -711,12 +650,10 @@
                 return;
             }
             
-            // Show loading state
             const originalButtonText = getDirectLinkBtn.innerHTML;
             getDirectLinkBtn.innerHTML = '⏳ در حال پردازش...';
             getDirectLinkBtn.disabled = true;
             
-            // Hide previous result
             resultBox.style.display = 'none';
             resultBox.className = '';
             proxyInfo.textContent = '🔄 در حال اتصال به سرور...';
@@ -738,38 +675,35 @@
                     `;
                     copyButton.style.display = 'block';
                     resultBox.style.display = 'flex';
-                } else {
-                    throw new Error('دریافت لینک با مشکل مواجه شد');
+                    proxyInfo.textContent = '';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 resultBox.className = 'result-box error';
-                let errorMessage = '❌ خطا در دریافت لینک: ';
                 
-                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMessage += 'مشکل در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید.';
-                } else if (error.message.includes('HTTP error')) {
-                    errorMessage += 'سرور پاسخگو نیست. لطفاً بعداً دوباره تلاش کنید.';
-                } else {
-                    errorMessage += error.message;
-                }
-                
-                resultContent.innerHTML = `<div class="result-error">${errorMessage}</div>`;
+                // Show helpful message
+                resultContent.innerHTML = `
+                    <div class="result-error">
+                        <strong>❌ خطا در دریافت لینک</strong><br><br>
+                        به دلیل محدودیت‌های امنیتی مرورگر، دانلود مستقیم از GitHub Pages امکان‌پذیر نیست.<br><br>
+                        <strong>راه حل موقت:</strong><br>
+                        ۱. لینک زیر را در مرورگر خود باز کنید:<br>
+                        <code style="background:#000;padding:5px;display:inline-block;margin:5px 0;font-size:11px;">https://cors-anywhere.herokuapp.com/corsdemo</code><br>
+                        ۲. روی دکمه "Request temporary access to the demo server" کلیک کنید<br>
+                        ۳. سپس دوباره امتحان کنید<br><br>
+                        یا از راهنماهای دیگر استفاده کنید.
+                    </div>
+                `;
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
-                proxyInfo.textContent = '❌ اتصال به سرور ناموفق بود';
+                proxyInfo.textContent = '❌ نیاز به فعال‌سازی دسترسی موقت';
                 proxyInfo.style.color = '#ff2a6d';
-                setTimeout(() => {
-                    proxyInfo.textContent = '';
-                }, 5000);
             } finally {
-                // Restore button state
                 getDirectLinkBtn.innerHTML = originalButtonText;
                 getDirectLinkBtn.disabled = false;
             }
         });
         
-        // Handle enter key press in input
         telegramLinkInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 getDirectLinkBtn.click();
