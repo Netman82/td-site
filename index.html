@@ -377,6 +377,30 @@
             color: #888;
             direction: ltr;
         }
+
+        /* Cookie notice styling */
+        .cookie-notice {
+            background: rgba(255, 100, 0, 0.15);
+            border: 1px solid #ff6400;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+            display: none;
+        }
+
+        .cookie-notice a {
+            color: var(--cyber-cyan);
+        }
+
+        .cookie-notice .close-notice {
+            float: left;
+            cursor: pointer;
+            color: #ff6400;
+            margin-right: 0.5rem;
+            font-weight: bold;
+        }
     </style>    
 </head>
 <body>
@@ -394,6 +418,12 @@
                 </p>
                 
                 <div class="input-wrapper">
+                    <!-- Cookie notice for Cloudflare bypass -->
+                    <div id="cookieNotice" class="cookie-notice">
+                        <span class="close-notice" onclick="document.getElementById('cookieNotice').style.display='none';">&times;</span>
+                        ⚠️ برای بهترین عملکرد، لطفاً ابتدا <a href="https://telegramdownloader.net" target="_blank">telegramdownloader.net</a> را باز کنید و سپس به این صفحه برگردید.
+                    </div>
+
                     <div class="cyber-input-group">
                         <span class="cyber-input-group__addon">
                             🔗
@@ -505,13 +535,34 @@
     </div>
 
     <script>
-        // Get the base URL for API calls (works on both localhost and Vercel)
-        const getApiUrl = () => {
-            // If we're on Vercel preview or production, use relative path
-            if (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost') {
-                return '/api/proxy';
+        // Get cookies from the browser
+        function getCookies() {
+            return document.cookie;
+        }
+
+        // Check if user has visited telegramdownloader.net (has cf_clearance cookie)
+        function hasCloudflareCookie() {
+            return document.cookie.includes('cf_clearance');
+        }
+
+        // Show cookie notice if needed
+        function checkAndShowCookieNotice() {
+            if (!hasCloudflareCookie()) {
+                const notice = document.getElementById('cookieNotice');
+                if (notice) {
+                    notice.style.display = 'block';
+                    // Auto-hide after 10 seconds
+                    setTimeout(() => {
+                        if (notice.style.display === 'block') {
+                            notice.style.display = 'none';
+                        }
+                    }, 10000);
+                }
             }
-            // Fallback to relative path
+        }
+
+        // Get the base URL for API calls
+        const getApiUrl = () => {
             return '/api/proxy';
         };
         
@@ -521,9 +572,10 @@
             return url.replace(/ /g, '-');
         }
         
-        // Main function to process Telegram link using your own proxy
+        // Main function to process Telegram link using your own proxy with cookies
         async function processTelegramLink(telegramLink, statusElement) {
             const apiUrl = getApiUrl();
+            const cookies = getCookies();
             
             if (statusElement) {
                 statusElement.textContent = '🔄 در حال ارتباط با سرور...';
@@ -531,13 +583,16 @@
             }
             
             try {
-                // Call your own proxy endpoint
+                // Call your own proxy endpoint with cookies
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ telegram_link: telegramLink })
+                    body: JSON.stringify({ 
+                        telegram_link: telegramLink,
+                        cookies: cookies  // Send browser cookies to the proxy
+                    })
                 });
                 
                 if (!response.ok) {
@@ -553,7 +608,6 @@
                 }
                 
                 // Handle response format from telegramdownloader.net
-                // The API returns: { success: true, data: { status: "success", link: "...", file_name: "..." } }
                 if (data && data.success === true && data.data) {
                     if (data.data.status === "success" && data.data.link) {
                         let downloadLink = repairDownloadLink(data.data.link);
@@ -586,6 +640,10 @@
                 
                 // Check for error in response
                 if (data && data.error) {
+                    // If error mentions Cloudflare, show helpful message
+                    if (data.error.includes('Cloudflare') || data.error.includes('cf_clearance')) {
+                        throw new Error('نیاز به تایید امنیتی. لطفاً telegramdownloader.net را باز کنید و سپس دوباره تلاش کنید.');
+                    }
                     throw new Error(data.error);
                 }
                 
@@ -693,6 +751,11 @@
                     errorMessage += 'مشکل در ارتباط با سرور. لطفاً صفحه را refresh کنید و دوباره تلاش کنید.';
                 } else if (error.message.includes('404')) {
                     errorMessage += 'سرور پروکسی یافت نشد. اطمینان حاصل کنید که پروکسی به درستی تنظیم شده است.';
+                } else if (error.message.includes('نیاز به تایید امنیتی')) {
+                    errorMessage += 'نیاز به تایید امنیتی. لطفاً telegramdownloader.net را باز کنید، تایید امنیتی را انجام دهید، سپس به این صفحه برگردید و دوباره تلاش کنید.';
+                    // Show cookie notice
+                    const notice = document.getElementById('cookieNotice');
+                    if (notice) notice.style.display = 'block';
                 } else if (error.message.includes('Invalid JSON')) {
                     errorMessage += 'پاسخ نامعتبر از سرور. لطفاً بعداً دوباره تلاش کنید.';
                 } else {
@@ -721,6 +784,11 @@
             if (e.key === 'Enter') {
                 getDirectLinkBtn.click();
             }
+        });
+        
+        // Check for Cloudflare cookie on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAndShowCookieNotice();
         });
     </script>
 </body>
