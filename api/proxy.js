@@ -4,12 +4,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
@@ -20,6 +18,8 @@ export default async function handler(req, res) {
     if (!telegram_link) {
       return res.status(400).json({ error: 'telegram_link is required' });
     }
+    
+    console.log('Requested link:', telegram_link);
     
     // Make request to the external API
     const response = await fetch('https://telegramdownloader.net/proxy.php', {
@@ -32,9 +32,22 @@ export default async function handler(req, res) {
       })
     });
     
-    const data = await response.json();
+    // Get the response as text first
+    const responseText = await response.text();
+    console.log('Raw response:', responseText);
     
-    // Return the response from the external API
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      // If not JSON, return the raw response for debugging
+      return res.status(500).json({ 
+        error: 'External API returned non-JSON response',
+        raw_response: responseText.substring(0, 500) // First 500 chars
+      });
+    }
+    
     return res.status(200).json(data);
     
   } catch (error) {
