@@ -379,11 +379,20 @@
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 0.8s linear infinite;
-            margin-right: 8px;
+            margin-left: 8px;
         }
         
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        
+        /* Proxy indicator */
+        .proxy-info {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 0.5rem;
+            color: #888;
+            direction: ltr;
         }
     </style>
     <!-- Orbitron font from Google Fonts (only for headings) -->
@@ -393,19 +402,16 @@
     <div class="hero-section">
         <div class="main-container">
             <div class="cyber-card-custom">
-                <!-- Main heading with glitch effect -->
                 <h1 class="cyber-glitch" data-text="دانلودر رایگان تلگرام (ویدیو، صدا و فایل)" style="font-size: 2rem; margin-bottom: 1rem; text-align: center; line-height: 1.4;">
                     دانلودر رایگان تلگرام (ویدیو، صدا و فایل)<br>                                        
                 </h1>
                 
-                <!-- Subheading -->
                 <p class="lead-text">
                     هر نوع رسانه‌ای را مستقیماً از کانال‌های عمومی تلگرام در دستگاه خود دانلود کنید. 
                     کافی است لینک پست زیر را وارد کنید تا لینک دانلود مستقیم با سرعت بالا برای شما ساخته شود. 
                     هیچ حسابی مورد نیاز نیست.
                 </p>
                 
-                <!-- Input section -->
                 <div class="input-wrapper">
                     <div class="cyber-input-group">
                         <span class="cyber-input-group__addon">
@@ -418,21 +424,19 @@
                                dir="ltr">
                     </div>
                     
-                    <!-- Action buttons -->
                     <div class="button-group">
                         <button id="getDirectLink" class="cyber-btn cyber-btn--magenta">
                             📥 دریافت لینک مستقیم
                         </button>
                     </div>
                     
-                    <!-- Result box for success/error messages -->
                     <div id="resultBox" class="result-box">
                         <div id="resultContent"></div>
                         <button id="copyButton" class="copy-btn" style="display: none;">📋 کپی لینک</button>
                     </div>
+                    <div id="proxyInfo" class="proxy-info"></div>
                 </div>
                 
-                <!-- Mini features -->
                 <div class="features-mini">
                     <div class="feature-mini-item">
                         <span>✅</span>
@@ -448,14 +452,12 @@
                     </div>
                 </div>
                 
-                <!-- Pro Tip -->
                 <div class="pro-tip">
                     💡 <strong>نکته حرفه‌ای:</strong> می‌توانید لینک ساخته شده را کپی کرده و در دانلود منیجر مورد علاقه خود (مثل IDM) استفاده کنید تا سرعت بیشتری بگیرید.
                 </div>
                 
                 <hr>
                 
-                <!-- Main content -->
                 <div class="content-section">
                     <p>
                         به <strong>دانلودر تلگرام</strong> خوش آمدید. عبور از برنامه اصلی تلگرام برای ذخیره فایل‌ها نباید پیچیده باشد. 
@@ -471,7 +473,6 @@
                     </p>
                 </div>
                 
-                <!-- Large files section -->
                 <h2 class="section-title">دانلود فایل‌های بزرگ (تا ۴ گیگابایت)</h2>
                 <div class="content-section">
                     <p>
@@ -485,7 +486,6 @@
                 
                 <hr>
                 
-                <!-- FAQ Section -->
                 <h2 class="section-title">پرسش‌های متداول (FAQ)</h2>
                 <div class="faq-section">
                     <div class="faq-item">
@@ -514,7 +514,6 @@
                     </div>
                 </div>
                 
-                <!-- Footer contact -->
                 <div class="footer-contact">
                     📧 برای گزارش مشکل یا سوالات خود به آدرس 
                     <a href="mailto:support@telegramdownloader.net">support@telegramdownloader.net</a> 
@@ -525,121 +524,142 @@
     </div>
 
     <script>
-        // CORS proxies to try (fallback mechanism)
+        // List of CORS proxies to try (in order of preference)
         const CORS_PROXIES = [
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.allorigins.win/raw?url=',
-            'https://thingproxy.freeboard.io/fetch/',
-            'https://corsproxy.io/?'
+            {
+                name: 'CORS Anywhere',
+                url: 'https://cors-anywhere.herokuapp.com/',
+                handler: async (proxyUrl, targetUrl, body) => {
+                    const response = await fetch(proxyUrl + targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Origin': window.location.origin
+                        },
+                        body: body
+                    });
+                    return await response.json();
+                }
+            },
+            {
+                name: 'All Origins',
+                url: 'https://api.allorigins.win/raw?url=',
+                handler: async (proxyUrl, targetUrl, body) => {
+                    // For allorigins, we need to send the request differently
+                    const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
+                    const response = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: body
+                    });
+                    const text = await response.text();
+                    return JSON.parse(text);
+                }
+            },
+            {
+                name: 'CORS Proxy',
+                url: 'https://corsproxy.io/?',
+                handler: async (proxyUrl, targetUrl, body) => {
+                    const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: body
+                    });
+                    return await response.json();
+                }
+            },
+            {
+                name: 'Thing Proxy',
+                url: 'https://thingproxy.freeboard.io/fetch/',
+                handler: async (proxyUrl, targetUrl, body) => {
+                    const response = await fetch(proxyUrl + targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: body
+                    });
+                    return await response.json();
+                }
+            }
         ];
-        
-        let currentProxyIndex = 0;
         
         // Helper function to replace spaces with hyphens
         function repairDownloadLink(url) {
             return url.replace(/ /g, '-');
         }
         
-        // Function to make request through a CORS proxy
-        async function fetchWithProxy(proxyUrl, targetUrl, telegramLink) {
-            let fullUrl;
-            
-            // Different proxies have different formats
-            if (proxyUrl.includes('allorigins')) {
-                fullUrl = `${proxyUrl}${encodeURIComponent(targetUrl)}`;
-                const response = await fetch(fullUrl);
-                const text = await response.text();
-                return JSON.parse(text);
-            } else if (proxyUrl.includes('corsproxy.io')) {
-                fullUrl = `${proxyUrl}${encodeURIComponent(targetUrl)}`;
-                const response = await fetch(fullUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ telegram_link: telegramLink })
-                });
-                return await response.json();
-            } else {
-                // Standard proxy format
-                fullUrl = `${proxyUrl}${targetUrl}`;
-                const response = await fetch(fullUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ telegram_link: telegramLink })
-                });
-                return await response.json();
-            }
-        }
-        
         // Main function to process Telegram link with proxy fallback
-        async function processTelegramLink(telegramLink) {
+        async function processTelegramLink(telegramLink, proxyInfoElement) {
             const targetUrl = 'https://telegramdownloader.net/proxy.php';
+            const body = new URLSearchParams({ telegram_link: telegramLink });
             
             // Try each proxy until one works
             for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxy = CORS_PROXIES[i];
                 try {
-                    console.log(`Trying proxy ${i + 1}/${CORS_PROXIES.length}: ${CORS_PROXIES[i]}`);
-                    
-                    const json = await fetchWithProxy(CORS_PROXIES[i], targetUrl, telegramLink);
-                    
-                    // Handle different response formats from different proxies
-                    let responseData;
-                    if (CORS_PROXIES[i].includes('allorigins')) {
-                        responseData = JSON.parse(json.contents);
-                    } else {
-                        responseData = json;
+                    if (proxyInfoElement) {
+                        proxyInfoElement.textContent = `🔄 در حال تلاش با ${proxy.name}...`;
+                        proxyInfoElement.style.color = '#ffaa44';
                     }
                     
-                    if (responseData.success && responseData.data && responseData.data.status === "success") {
-                        let downloadLink = responseData.data.link;
-                        const fileName = responseData.data.file_name;
-                        
-                        downloadLink = repairDownloadLink(downloadLink);
-                        
+                    console.log(`Trying proxy ${i + 1}/${CORS_PROXIES.length}: ${proxy.name}`);
+                    
+                    const json = await proxy.handler(proxy.url, targetUrl, body);
+                    
+                    // Handle response
+                    let responseData = json;
+                    
+                    // Check if we got a valid response
+                    if (responseData && responseData.success && responseData.data) {
+                        if (responseData.data.status === "success" && responseData.data.link) {
+                            let downloadLink = repairDownloadLink(responseData.data.link);
+                            const fileName = responseData.data.file_name || 'Unknown';
+                            
+                            if (proxyInfoElement) {
+                                proxyInfoElement.textContent = `✅ موفق با ${proxy.name}`;
+                                proxyInfoElement.style.color = '#05ffa1';
+                                setTimeout(() => {
+                                    proxyInfoElement.textContent = '';
+                                }, 3000);
+                            }
+                            
+                            return {
+                                success: true,
+                                downloadLink: downloadLink,
+                                fileName: fileName
+                            };
+                        }
+                    }
+                    
+                    // Alternative response format
+                    if (responseData && responseData.link) {
+                        let downloadLink = repairDownloadLink(responseData.link);
+                        if (proxyInfoElement) {
+                            proxyInfoElement.textContent = `✅ موفق با ${proxy.name}`;
+                            proxyInfoElement.style.color = '#05ffa1';
+                            setTimeout(() => {
+                                proxyInfoElement.textContent = '';
+                            }, 3000);
+                        }
                         return {
                             success: true,
                             downloadLink: downloadLink,
-                            fileName: fileName
-                        };
-                    } else if (responseData.success && responseData.data && responseData.data.link) {
-                        // Alternative success format
-                        let downloadLink = repairDownloadLink(responseData.data.link);
-                        return {
-                            success: true,
-                            downloadLink: downloadLink,
-                            fileName: responseData.data.file_name || 'Unknown'
+                            fileName: responseData.file_name || 'Unknown'
                         };
                     }
+                    
                 } catch (error) {
-                    console.log(`Proxy ${i + 1} failed:`, error.message);
+                    console.log(`Proxy ${proxy.name} failed:`, error.message);
                     continue;
                 }
             }
             
-            // If all proxies fail, try direct request (might work in some environments)
-            try {
-                console.log('Trying direct request...');
-                const response = await fetch('https://telegramdownloader.net/proxy.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ telegram_link: telegramLink })
-                });
-                
-                if (response.ok) {
-                    const json = await response.json();
-                    if (json.success && json.data && json.data.status === "success") {
-                        let downloadLink = repairDownloadLink(json.data.link);
-                        return {
-                            success: true,
-                            downloadLink: downloadLink,
-                            fileName: json.data.file_name
-                        };
-                    }
-                }
-            } catch (error) {
-                console.log('Direct request failed:', error.message);
-            }
-            
-            throw new Error('همه پروکسی‌ها ناموفق بودند. لطفاً بعداً دوباره تلاش کنید.');
+            throw new Error('تمامی پروکسی‌ها ناموفق بودند. لطفاً بعداً دوباره تلاش کنید.');
         }
         
         // Get DOM elements
@@ -648,6 +668,7 @@
         const resultBox = document.getElementById('resultBox');
         const resultContent = document.getElementById('resultContent');
         const copyButton = document.getElementById('copyButton');
+        const proxyInfo = document.getElementById('proxyInfo');
         
         let currentDownloadLink = '';
         
@@ -676,6 +697,7 @@
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً لینک تلگرام را وارد کنید</div>';
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
+                proxyInfo.textContent = '';
                 return;
             }
             
@@ -685,19 +707,23 @@
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً یک لینک معتبر تلگرام وارد کنید (مثال: https://t.me/...)</div>';
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
+                proxyInfo.textContent = '';
                 return;
             }
             
             // Show loading state
             const originalButtonText = getDirectLinkBtn.innerHTML;
-            getDirectLinkBtn.innerHTML = '<span class="loading-spinner"></span> در حال پردازش...';
+            getDirectLinkBtn.innerHTML = '⏳ در حال پردازش...';
             getDirectLinkBtn.disabled = true;
             
             // Hide previous result
             resultBox.style.display = 'none';
+            resultBox.className = '';
+            proxyInfo.textContent = '🔄 در حال اتصال به سرور...';
+            proxyInfo.style.color = '#ffaa44';
             
             try {
-                const result = await processTelegramLink(telegramLink);
+                const result = await processTelegramLink(telegramLink, proxyInfo);
                 
                 if (result.success) {
                     currentDownloadLink = result.downloadLink;
@@ -731,6 +757,11 @@
                 resultContent.innerHTML = `<div class="result-error">${errorMessage}</div>`;
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
+                proxyInfo.textContent = '❌ اتصال به سرور ناموفق بود';
+                proxyInfo.style.color = '#ff2a6d';
+                setTimeout(() => {
+                    proxyInfo.textContent = '';
+                }, 5000);
             } finally {
                 // Restore button state
                 getDirectLinkBtn.innerHTML = originalButtonText;
