@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'telegram_link is required' });
     }
     
-    // Make request to the external API with browser headers
+    // Make request to the external API with browser headers and cookies
     const response = await fetch('https://telegramdownloader.net/proxy.php', {
       method: 'POST',
       headers: {
@@ -32,7 +32,6 @@ export default async function handler(req, res) {
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        // Forward the cookies from the frontend
         'Cookie': cookies || ''
       },
       body: new URLSearchParams({
@@ -47,7 +46,13 @@ export default async function handler(req, res) {
       const data = JSON.parse(responseText);
       return res.status(200).json(data);
     } catch (e) {
-      // If not JSON, return error with preview
+      // If not JSON, check if it's a Cloudflare page
+      if (responseText.includes('cf_clearance') || responseText.includes('Just a moment')) {
+        return res.status(500).json({ 
+          error: 'Cloudflare protection detected. Please visit telegramdownloader.net first to get clearance cookie.',
+          requires_clearance: true
+        });
+      }
       return res.status(500).json({ 
         error: 'External API returned non-JSON response',
         preview: responseText.substring(0, 200)
