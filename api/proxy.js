@@ -19,7 +19,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'telegram_link is required' });
     }
     
-    // Make request to the external API with browser headers and cookies
+    // Clean and prepare cookies
+    let cookieHeader = '';
+    if (cookies && cookies.trim()) {
+      // Remove any whitespace and ensure proper format
+      cookieHeader = cookies.trim();
+      // Add cf_clearance prefix if missing
+      if (!cookieHeader.includes('cf_clearance') && cookieHeader.length > 0) {
+        cookieHeader = `cf_clearance=${cookieHeader}`;
+      }
+    }
+    
+    console.log('Request for:', telegram_link);
+    console.log('Cookie present:', !!cookieHeader);
+    
+    // Make request to the external API with browser headers
     const response = await fetch('https://telegramdownloader.net/proxy.php', {
       method: 'POST',
       headers: {
@@ -32,7 +46,7 @@ export default async function handler(req, res) {
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'Cookie': cookies || ''
+        'Cookie': cookieHeader
       },
       body: new URLSearchParams({
         telegram_link: telegram_link
@@ -47,9 +61,9 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     } catch (e) {
       // If not JSON, check if it's a Cloudflare page
-      if (responseText.includes('cf_clearance') || responseText.includes('Just a moment')) {
+      if (responseText.includes('cf_clearance') || responseText.includes('Just a moment') || responseText.includes('Cloudflare')) {
         return res.status(500).json({ 
-          error: 'Cloudflare protection detected. Please visit telegramdownloader.net first to get clearance cookie.',
+          error: 'Cloudflare protection detected. Please enter your cf_clearance cookie in the settings below.',
           requires_clearance: true
         });
       }
