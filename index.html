@@ -370,21 +370,12 @@
             to { transform: rotate(360deg); }
         }
         
-        .proxy-info {
-            font-size: 0.7rem;
+        .status-info {
+            font-size: 0.8rem;
             text-align: center;
             margin-top: 0.5rem;
             color: #888;
             direction: ltr;
-        }
-        
-        .warning-box {
-            background: rgba(255, 100, 0, 0.1);
-            border: 1px solid #ff6400;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            text-align: center;
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -425,7 +416,7 @@
                         <div id="resultContent"></div>
                         <button id="copyButton" class="copy-btn" style="display: none;">📋 کپی لینک</button>
                     </div>
-                    <div id="proxyInfo" class="proxy-info"></div>
+                    <div id="statusInfo" class="status-info"></div>
                 </div>
                 
                 <div class="features-mini">
@@ -515,94 +506,73 @@
     </div>
 
     <script>
-        // Working CORS proxy solution using AllOrigins with proper format
-        async function processTelegramLink(telegramLink, proxyInfoElement) {
-            const targetUrl = 'https://telegramdownloader.net/proxy.php';
-            
-            // Method 1: Use AllOrigins with POST data in the body
-            if (proxyInfoElement) {
-                proxyInfoElement.textContent = '🔄 در حال اتصال به سرور (روش 1)...';
-                proxyInfoElement.style.color = '#ffaa44';
+        // Helper function to replace spaces with hyphens in download links
+        function repairDownloadLink(url) {
+            return url.replace(/ /g, '-');
+        }
+        
+        // Main function to process Telegram link using your own proxy
+        async function processTelegramLink(telegramLink, statusElement) {
+            if (statusElement) {
+                statusElement.textContent = '🔄 در حال ارتباط با سرور...';
+                statusElement.style.color = '#ffaa44';
             }
             
             try {
-                // First attempt: Use AllOrigins with proper encoding
-                const allOriginsUrl = 'https://api.allorigins.win/raw?url=';
-                const encodedTarget = encodeURIComponent(targetUrl);
-                
-                // Create form data
-                const formData = new URLSearchParams();
-                formData.append('telegram_link', telegramLink);
-                
-                // Make request through AllOrigins
-                const response = await fetch(allOriginsUrl + encodedTarget, {
+                // Call your own proxy endpoint
+                const response = await fetch('/api/proxy', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/json',
                     },
-                    body: formData.toString()
+                    body: JSON.stringify({ telegram_link: telegramLink })
                 });
                 
-                if (response.ok) {
-                    const result = await response.json();
-                    
-                    // Check if we got a valid response
-                    if (result && result.success && result.data && result.data.status === "success") {
-                        let downloadLink = result.data.link.replace(/ /g, '-');
-                        if (proxyInfoElement) {
-                            proxyInfoElement.textContent = '✅ متصل شد! در حال دریافت لینک...';
-                            proxyInfoElement.style.color = '#05ffa1';
-                            setTimeout(() => {
-                                proxyInfoElement.textContent = '';
-                            }, 2000);
-                        }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (statusElement) {
+                    statusElement.textContent = '✅ در حال پردازش پاسخ...';
+                    statusElement.style.color = '#05ffa1';
+                }
+                
+                // Handle different response formats from the proxy
+                if (data.success && data.data) {
+                    if (data.data.status === "success" && data.data.link) {
+                        let downloadLink = repairDownloadLink(data.data.link);
                         return {
                             success: true,
                             downloadLink: downloadLink,
-                            fileName: result.data.file_name || 'Unknown'
+                            fileName: data.data.file_name || 'Unknown'
+                        };
+                    } else if (data.data.link) {
+                        let downloadLink = repairDownloadLink(data.data.link);
+                        return {
+                            success: true,
+                            downloadLink: downloadLink,
+                            fileName: data.data.file_name || 'Unknown'
                         };
                     }
-                }
-            } catch (error) {
-                console.log('Method 1 failed:', error);
-            }
-            
-            // Method 2: Use a different approach with GET request
-            if (proxyInfoElement) {
-                proxyInfoElement.textContent = '🔄 تلاش با روش جایگزین...';
-                proxyInfoElement.style.color = '#ffaa44';
-            }
-            
-            try {
-                // Alternative: Try to get the direct download URL differently
-                // This is a workaround - sometimes the API expects GET instead of POST
-                const getUrl = `${targetUrl}?telegram_link=${encodeURIComponent(telegramLink)}`;
-                const allOriginsUrl = 'https://api.allorigins.win/raw?url=';
-                
-                const response = await fetch(allOriginsUrl + encodeURIComponent(getUrl));
-                const result = await response.json();
-                
-                if (result && result.success && result.data && result.data.status === "success") {
-                    let downloadLink = result.data.link.replace(/ /g, '-');
-                    if (proxyInfoElement) {
-                        proxyInfoElement.textContent = '✅ موفق!';
-                        proxyInfoElement.style.color = '#05ffa1';
-                        setTimeout(() => {
-                            proxyInfoElement.textContent = '';
-                        }, 2000);
-                    }
+                } else if (data.link) {
+                    let downloadLink = repairDownloadLink(data.link);
                     return {
                         success: true,
                         downloadLink: downloadLink,
-                        fileName: result.data.file_name || 'Unknown'
+                        fileName: data.file_name || 'Unknown'
                     };
+                } else if (data.error) {
+                    throw new Error(data.error);
                 }
+                
+                throw new Error('پاسخ نامعتبر از سرور');
+                
             } catch (error) {
-                console.log('Method 2 failed:', error);
+                console.error('Proxy error:', error);
+                throw error;
             }
-            
-            // Method 3: Show helpful message about CORS
-            throw new Error('به دلیل محدودیت‌های امنیتی مرورگر، لطفاً از راهنمای زیر استفاده کنید.');
         }
         
         // Get DOM elements
@@ -611,10 +581,11 @@
         const resultBox = document.getElementById('resultBox');
         const resultContent = document.getElementById('resultContent');
         const copyButton = document.getElementById('copyButton');
-        const proxyInfo = document.getElementById('proxyInfo');
+        const statusInfo = document.getElementById('statusInfo');
         
         let currentDownloadLink = '';
         
+        // Copy button functionality
         copyButton.addEventListener('click', function() {
             if (currentDownloadLink) {
                 navigator.clipboard.writeText(currentDownloadLink).then(() => {
@@ -629,38 +600,43 @@
             }
         });
         
+        // Main button click handler
         getDirectLinkBtn.addEventListener('click', async function() {
             const telegramLink = telegramLinkInput.value.trim();
             
+            // Validate input
             if (!telegramLink) {
                 resultBox.className = 'result-box error';
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً لینک تلگرام را وارد کنید</div>';
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
-                proxyInfo.textContent = '';
+                statusInfo.textContent = '';
                 return;
             }
             
+            // Validate if it's a telegram link
             if (!telegramLink.includes('t.me/') && !telegramLink.includes('telegram.me/')) {
                 resultBox.className = 'result-box error';
                 resultContent.innerHTML = '<div class="result-error">❌ لطفاً یک لینک معتبر تلگرام وارد کنید (مثال: https://t.me/...)</div>';
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
-                proxyInfo.textContent = '';
+                statusInfo.textContent = '';
                 return;
             }
             
+            // Show loading state
             const originalButtonText = getDirectLinkBtn.innerHTML;
-            getDirectLinkBtn.innerHTML = '⏳ در حال پردازش...';
+            getDirectLinkBtn.innerHTML = '<span class="loading-spinner"></span> در حال پردازش...';
             getDirectLinkBtn.disabled = true;
             
+            // Hide previous result
             resultBox.style.display = 'none';
             resultBox.className = '';
-            proxyInfo.textContent = '🔄 در حال اتصال به سرور...';
-            proxyInfo.style.color = '#ffaa44';
+            statusInfo.textContent = '🔄 در حال اتصال به سرور...';
+            statusInfo.style.color = '#ffaa44';
             
             try {
-                const result = await processTelegramLink(telegramLink, proxyInfo);
+                const result = await processTelegramLink(telegramLink, statusInfo);
                 
                 if (result.success) {
                     currentDownloadLink = result.downloadLink;
@@ -671,39 +647,52 @@
                             <strong>✅ لینک مستقیم:</strong><br>
                             <a href="${result.downloadLink}" target="_blank" style="color: var(--cyber-green); word-break: break-all;">${result.downloadLink}</a>
                             <br><small>📁 نام فایل: ${result.fileName}</small>
+                            <br><small>🔗 برای دانلود روی لینک کلیک کنید یا با دکمه کپی کنید</small>
                         </div>
                     `;
                     copyButton.style.display = 'block';
                     resultBox.style.display = 'flex';
-                    proxyInfo.textContent = '';
+                    statusInfo.textContent = '✅ موفق! لینک دانلود آماده است';
+                    statusInfo.style.color = '#05ffa1';
+                    setTimeout(() => {
+                        if (statusInfo.textContent === '✅ موفق! لینک دانلود آماده است') {
+                            statusInfo.textContent = '';
+                        }
+                    }, 3000);
+                } else {
+                    throw new Error('دریافت لینک با مشکل مواجه شد');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 resultBox.className = 'result-box error';
                 
-                // Show helpful message
-                resultContent.innerHTML = `
-                    <div class="result-error">
-                        <strong>❌ خطا در دریافت لینک</strong><br><br>
-                        به دلیل محدودیت‌های امنیتی مرورگر، دانلود مستقیم از GitHub Pages امکان‌پذیر نیست.<br><br>
-                        <strong>راه حل موقت:</strong><br>
-                        ۱. لینک زیر را در مرورگر خود باز کنید:<br>
-                        <code style="background:#000;padding:5px;display:inline-block;margin:5px 0;font-size:11px;">https://cors-anywhere.herokuapp.com/corsdemo</code><br>
-                        ۲. روی دکمه "Request temporary access to the demo server" کلیک کنید<br>
-                        ۳. سپس دوباره امتحان کنید<br><br>
-                        یا از راهنماهای دیگر استفاده کنید.
-                    </div>
-                `;
+                let errorMessage = '❌ خطا در دریافت لینک: ';
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage += 'مشکل در ارتباط با سرور. لطفاً صفحه را refresh کنید و دوباره تلاش کنید.';
+                } else if (error.message.includes('404')) {
+                    errorMessage += 'سرور پروکسی یافت نشد. اطمینان حاصل کنید که پروکسی به درستی تنظیم شده است.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                resultContent.innerHTML = `<div class="result-error">${errorMessage}</div>`;
                 copyButton.style.display = 'none';
                 resultBox.style.display = 'flex';
-                proxyInfo.textContent = '❌ نیاز به فعال‌سازی دسترسی موقت';
-                proxyInfo.style.color = '#ff2a6d';
+                statusInfo.textContent = '❌ خطا در ارتباط با سرور';
+                statusInfo.style.color = '#ff2a6d';
+                setTimeout(() => {
+                    if (statusInfo.textContent === '❌ خطا در ارتباط با سرور') {
+                        statusInfo.textContent = '';
+                    }
+                }, 5000);
             } finally {
+                // Restore button state
                 getDirectLinkBtn.innerHTML = originalButtonText;
                 getDirectLinkBtn.disabled = false;
             }
         });
         
+        // Handle enter key press in input
         telegramLinkInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 getDirectLinkBtn.click();
